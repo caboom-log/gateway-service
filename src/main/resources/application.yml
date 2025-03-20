@@ -21,7 +21,17 @@ spring:
           uri: http://localhost:9003/
           predicates:
             - Path=/api/**
-  profiles:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "https://localhost:8080"
+            allowedMethods:
+              - GET
+              - POST
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+  profiles :
     active: local
 
 eureka:
