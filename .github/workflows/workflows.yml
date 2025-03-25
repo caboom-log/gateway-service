@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - develop
 
 jobs:
   build-and-deploy:
@@ -19,11 +20,34 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: Set application-prod.yml file
+        uses: microsoft/variable-substitution@v1
+        with:
+          files: ./src/main/resources/application-prod.yml
+        env:
+          discovery.host: ${{ secrets.DISCOVERY_HOST }}
+          discovery.port: ${{ secrets.DISCOVERY_PORT }}
+          discovery.username: ${{ secrets.DISCOVERY_USERNAME }}
+          discovery.password: ${{ secrets.DISCOVERY_PASSWORD }}
+          discovery.routing-rui.auth-service: ${{ secrets.AUTH_URI }}
+          discovery.routing-rui.token-service: ${{ secrets.TOKEN_URI }}
+          discovery.routing-rui.backend-service: ${{ secrets.BACKEND_URI }}
+
       - name: Build with Maven
         run: |
-          ./mvnw clean package -DskipTests
+          mvn clean package -Dspring.profiles.active=prod
 
-      - name: Copy to Server and Deploy
+      - name: Log in to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKER_HUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
+
+      - name: Build and Push Docker Image
+        run: |
+          IMAGE_NAME=${{ secrets.DOCKER_HUB_USERNAME }}/caboomlog-gateway-service:latest
+          docker build -t $IMAGE_NAME .
+          docker push $IMAGE_NAME
+
+      - name: Deploy to Server via SSH
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -31,29 +55,12 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            echo "==> Removing old files..."
-            sudo rm -rf ~/gateway-service
-            
-            echo "==> Creating gateway-service directory..."
-            sudo mkdir -p ~/gateway-service
-            sudo chmod -R 777 ~/gateway-service
-            
-            echo "==> Cloning repository..."
-            sudo git clone https://github.com/caboom-log/gateway-service.git ~/gateway-service
-            
-            cd ~/gateway-service
-            
-            echo "==> Preparing target directory..."
-            sudo mkdir -p target/classes
-            sudo chmod -R 777 target
-            
-            echo "==> Building gateway service..."
-            sudo ./mvnw clean package -DskipTests
-            
-            echo "==> Building Docker image..."
-            sudo docker build -t caboomlog-gateway-service:latest .
-            
-            echo "==> Restarting gateway-service..."
             cd /caboomlog
-            sudo docker-compose --env-file ./gateway-service/.env restart gateway-service
 
+            docker compose stop gateway-service || true
+            docker compose rm -f gateway-service || true
+
+            docker rmi $(docker images '${{ secrets.DOCKER_HUB_USERNAME }}/caboomlog-gateway-service' -q)
+            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/caboomlog-gateway-service:latest
+            
+            docker compose up -d gateway-service
