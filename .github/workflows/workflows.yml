@@ -20,22 +20,16 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Set application-prod.yml file
+      - name: Set application.yml file
         uses: microsoft/variable-substitution@v1
         with:
-          files: ./src/main/resources/application-prod.yml
+          files: ./src/main/resources/application.yml
         env:
-          discovery.host: ${{ secrets.DISCOVERY_HOST }}
-          discovery.port: ${{ secrets.DISCOVERY_PORT }}
-          discovery.username: ${{ secrets.DISCOVERY_USERNAME }}
-          discovery.password: ${{ secrets.DISCOVERY_PASSWORD }}
-          discovery.routing-uri.auth-service: ${{ secrets.AUTH_URI }}
-          discovery.routing-uri.token-service: ${{ secrets.TOKEN_URI }}
-          discovery.routing-uri.backend-service: ${{ secrets.BACKEND_URI }}
+          eureka.client.service-url.defaultZone: ${{ secrets.EUREKA_SERVICE_URL }}
 
       - name: Build with Maven
         run: |
-          mvn clean package -Dspring.profiles.active=prod
+          mvn clean package
 
       - name: Log in to Docker Hub
         run: |

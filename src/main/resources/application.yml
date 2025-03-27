@@ -10,33 +10,31 @@ spring:
     gateway:
       routes:
         - id: auth-service
-          uri: ${discovery.routing-uri.auth-service}
+          uri: lb://auth-service
           predicates:
             - Path=/auth/**
         - id: token-service
-          uri: ${discovery.routing-uri.token-service}
+          uri: lb://token-service
           predicates:
             - Path=/token/**
         - id: backend-service
-          uri: ${discovery.routing-uri.backend-service}
+          uri: lb://backend-service
           predicates:
             - Path=/api/**
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOrigins: "https://localhost:8080"
+            allowedOrigins: "http://www.caboomlog.site:80"
             allowedMethods:
               - GET
               - POST
               - OPTIONS
             allowedHeaders: "*"
             allowCredentials: true
-  profiles :
-    active: local
 
 eureka:
   client:
     register-with-eureka: false
     fetch-registry: false
     service-url:
-      defaultZone: http://${discovery.username}:${discovery.password}@${discovery.host}:${discovery.port}/eureka
+      defaultZone:

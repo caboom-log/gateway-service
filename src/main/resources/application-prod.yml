@@ -1,9 +1,0 @@
-discovery:
-  host:
-  port:
-  username:
-  password:
-  routing-uri:
-    auth-service:
-    token-service:
-    backend-service:
