@@ -1,14 +1,18 @@
 package site.caboomlog.gatewayservice.jwt;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
@@ -18,14 +22,18 @@ import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 public class JwtAuthenticationFilter implements GlobalFilter {
 
     private final WebClient.Builder webClientBuilder;
+    private final AntPathMatcher pathMatcher = new AntPathMatcher();
+
+    @Value("${custom-filter.whitelist.jwt}")
+    private List<String> whiteList;
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
 
-        if (path.contains("/login") || path.contains("/signup") ||
-                path.contains("/topic") || path.contains("refresh")) {
+        boolean isWitheListed = whiteList.stream().anyMatch(allowed -> pathMatcher.match(allowed, path));
+        if (isWitheListed) {
             return chain.filter(exchange);
         }
 
@@ -49,9 +57,8 @@ public class JwtAuthenticationFilter implements GlobalFilter {
                         exchange.getResponse().setStatusCode(UNAUTHORIZED);
                         return exchange.getResponse().setComplete();
                     }
-
                     ServerHttpRequest modifiedRequest = request.mutate()
-                            .header("caboomlog-mb-no", String.valueOf(response.getMbNo()))
+                            .header("X-Caboomlog-UID", String.valueOf(response.getMbUuid()))
                             .build();
                     return chain.filter(exchange.mutate().request(modifiedRequest).build());
                 })
