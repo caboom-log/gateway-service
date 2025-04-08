@@ -13,10 +13,12 @@ spring:
           uri: lb://auth-service
           predicates:
             - Path=/auth/**
+
         - id: token-service
           uri: lb://token-service
           predicates:
             - Path=/token/**
+
         - id: backend-service
           uri: lb://backend-service
           predicates:
@@ -37,4 +39,13 @@ eureka:
     register-with-eureka: false
     fetch-registry: true
     service-url:
-      defaultZone:
+      defaultZone: http://admin:admin@localhost:8761/eureka
+
+custom-filter:
+  whitelist:
+    jwt:
+      - /login
+      - /signup
+      - /token/refresh
+      - /topic/**
+      - /api/blogs/*
