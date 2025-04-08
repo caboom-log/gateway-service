@@ -44,7 +44,7 @@ eureka:
 custom-filter:
   whitelist:
     jwt:
-      - /login
+      - /auth/login
       - /signup
       - /token/refresh
       - /topic/**
