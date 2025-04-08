@@ -11,9 +11,6 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
-
-import java.util.List;
-
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
@@ -23,16 +20,14 @@ public class JwtAuthenticationFilter implements GlobalFilter {
 
     private final WebClient.Builder webClientBuilder;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
-
-    @Value("${custom-filter.whitelist.jwt}")
-    private List<String> whiteList;
-
+    private final JwtWhitelistProperties jwtWhitelistProperties;
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
 
-        boolean isWitheListed = whiteList.stream().anyMatch(allowed -> pathMatcher.match(allowed, path));
+        boolean isWitheListed = jwtWhitelistProperties.getJwt()
+                .stream().anyMatch(allowed -> pathMatcher.match(allowed, path));
         if (isWitheListed) {
             return chain.filter(exchange);
         }
