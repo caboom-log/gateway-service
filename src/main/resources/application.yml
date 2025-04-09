@@ -47,5 +47,4 @@ custom-filter:
       - /auth/login
       - /signup
       - /token/refresh
-      - /topic/**
-      - /api/blogs/*
+      - /api/topics

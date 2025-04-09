@@ -1,9 +1,9 @@
 package site.caboomlog.gatewayservice.jwt;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
@@ -28,6 +28,13 @@ public class JwtAuthenticationFilter implements GlobalFilter {
 
         boolean isWitheListed = jwtWhitelistProperties.getJwt()
                 .stream().anyMatch(allowed -> pathMatcher.match(allowed, path));
+
+        if (HttpMethod.GET.equals(request.getMethod()) &&
+                pathMatcher.match("/api/blogs/**", path) &&
+                !pathMatcher.match("/api/blogs/me", path)) {
+            return chain.filter(exchange);
+        }
+
         if (isWitheListed) {
             return chain.filter(exchange);
         }
