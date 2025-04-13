@@ -1,6 +1,7 @@
 package site.caboomlog.gatewayservice.jwt;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.http.HttpMethod;
@@ -15,6 +16,7 @@ import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
 @Component
+@Slf4j
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter implements GlobalFilter {
 
@@ -26,27 +28,36 @@ public class JwtAuthenticationFilter implements GlobalFilter {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
 
-        boolean isWitheListed = jwtWhitelistProperties.getJwt()
+        boolean isWhiteListed = jwtWhitelistProperties.getJwt()
                 .stream().anyMatch(allowed -> pathMatcher.match(allowed, path));
 
         if (HttpMethod.GET.equals(request.getMethod()) &&
-                pathMatcher.match("/api/blogs/**", path) &&
-                !pathMatcher.match("/api/blogs/me", path)) {
-            return chain.filter(exchange);
+                !(pathMatcher.match("/api/blogs/*/categories", path)
+                || pathMatcher.match("/api/blogs/me", path)
+                || pathMatcher.match("/api/blogs/*/members/me", path)
+                || path.startsWith("/api/members")
+                || pathMatcher.match("/api/blogs/*/posts/*", path))) {
+            isWhiteListed = true;
+        }
+        if (pathMatcher.match("/api/blogs/*/posts/public", path)) {
+            isWhiteListed = true;
         }
 
-        if (isWitheListed) {
+        if (isWhiteListed) {
             return chain.filter(exchange);
         }
 
         String authHeader = request.getHeaders().getFirst(AUTHORIZATION);
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if (((authHeader == null || !authHeader.startsWith("Bearer "))) &&
+        !pathMatcher.match("/api/blogs/*/posts/*", path)) {
             exchange.getResponse().setStatusCode(UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
 
-        String token = authHeader.replace("Bearer ", "");
-
+        String token = "";
+        if (authHeader != null) {
+            token = authHeader.replace("Bearer ", "");
+        }
         return webClientBuilder.build()
                 .post()
                 .uri("http://token-service/token/validate")
@@ -56,6 +67,9 @@ public class JwtAuthenticationFilter implements GlobalFilter {
                 .bodyToMono(TokenValidationResponse.class)
                 .flatMap(response -> {
                     if (!response.isValid()) {
+                        if (pathMatcher.match("/api/blogs/*/posts/*", path)) {
+                            return chain.filter(exchange);
+                        }
                         exchange.getResponse().setStatusCode(UNAUTHORIZED);
                         return exchange.getResponse().setComplete();
                     }
@@ -65,6 +79,7 @@ public class JwtAuthenticationFilter implements GlobalFilter {
                     return chain.filter(exchange.mutate().request(modifiedRequest).build());
                 })
                 .onErrorResume(e -> {
+                    log.error("",e);
                     exchange.getResponse().setStatusCode(UNAUTHORIZED);
                     return exchange.getResponse().setComplete();
                 });
