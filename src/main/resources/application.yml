@@ -48,3 +48,5 @@ custom-filter:
       - /signup
       - /token/refresh
       - /api/topics
+      - /auth/send-verification-code
+      - /auth/verify-email
