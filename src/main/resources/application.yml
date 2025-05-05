@@ -26,7 +26,7 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOrigins: "http://www.caboomlog.site:80"
+            allowedOrigins: "https://www.caboomlog.site, http://localhost:8080"
             allowedMethods:
               - GET
               - POST
@@ -48,5 +48,8 @@ custom-filter:
       - /signup
       - /token/refresh
       - /api/topics
+      - /api/blogs/*/categories/public
+      - /api/posts
       - /auth/send-verification-code
       - /auth/verify-email
+      - /auth/register
